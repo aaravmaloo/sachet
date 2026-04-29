@@ -70,9 +70,6 @@ func (b *SachetBot) handleIncomingMessage(evt *events.Message) {
 		return
 	}
 
-	if evt.Info.IsFromMe {
-		return
-	}
 
 	msgText := extractMessageText(evt.Message)
 	trimmed := strings.TrimSpace(msgText)
