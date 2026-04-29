@@ -580,10 +580,27 @@ func extractMessageText(msg *waE2E.Message) string {
 
 func renderMemberName(name, jid string) string {
 	name = strings.TrimSpace(name)
+	cleanJID := cleanJIDForDisplay(jid)
 	if name == "" {
-		return jid
+		return cleanJID
 	}
-	return fmt.Sprintf("%s (%s)", name, jid)
+	if name == cleanJID {
+		return name
+	}
+	return fmt.Sprintf("%s (%s)", name, cleanJID)
+}
+
+func cleanJIDForDisplay(jid string) string {
+	// Strip @s.whatsapp.net or @lid suffix
+	base := jid
+	if at := strings.Index(jid, "@"); at >= 0 {
+		base = jid[:at]
+	}
+	// Strip device ID suffix (e.g. "52854672892136:4" -> "52854672892136")
+	if colon := strings.Index(base, ":"); colon >= 0 {
+		base = base[:colon]
+	}
+	return base
 }
 
 type dayStat struct {
