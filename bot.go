@@ -462,10 +462,23 @@ func (b *SachetBot) handleLeaderboardCommand(evt *events.Message) {
 		fmt.Sprintf("Leaderboard: %s", group.Name),
 		fmt.Sprintf("Total indexed messages: %d", group.TotalMessages),
 	}
+	var mentionedJIDs []string
 	for i, row := range top {
-		lines = append(lines, fmt.Sprintf("%d. %s - %d", i+1, renderMemberName(row.Name, row.JID), row.Count))
+		phoneJID := b.resolveToPhoneJID(row.JID)
+		parsed, err := types.ParseJID(phoneJID)
+		if err == nil && parsed.Server == types.DefaultUserServer {
+			lines = append(lines, fmt.Sprintf("%d. @%s - %d", i+1, parsed.User, row.Count))
+			mentionedJIDs = append(mentionedJIDs, phoneJID)
+		} else {
+			lines = append(lines, fmt.Sprintf("%d. %s - %d", i+1, renderMemberName(row.Name, row.JID), row.Count))
+		}
 	}
-	_ = b.sendText(evt.Info.Chat, strings.Join(lines, "\n"))
+
+	if len(mentionedJIDs) > 0 {
+		_ = b.sendTextWithMentions(evt.Info.Chat, strings.Join(lines, "\n"), mentionedJIDs)
+	} else {
+		_ = b.sendText(evt.Info.Chat, strings.Join(lines, "\n"))
+	}
 }
 
 func (b *SachetBot) refreshGroupMetadata(chat types.JID) string {
@@ -518,6 +531,40 @@ func (b *SachetBot) sendText(chat types.JID, text string) error {
 		b.log.Warnf("failed to send message to %s: %v", chat, err)
 	}
 	return err
+}
+
+func (b *SachetBot) sendTextWithMentions(chat types.JID, text string, mentionedJIDs []string) error {
+	ctx := context.Background()
+	msg := &waE2E.Message{
+		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+			Text: proto.String(text),
+			ContextInfo: &waE2E.ContextInfo{
+				MentionedJID: mentionedJIDs,
+			},
+		},
+	}
+	_, err := b.client.SendMessage(ctx, chat, msg)
+	if err != nil {
+		b.log.Warnf("failed to send message with mentions to %s: %v", chat, err)
+	}
+	return err
+}
+
+func (b *SachetBot) resolveToPhoneJID(jid string) string {
+	parsed, err := types.ParseJID(jid)
+	if err != nil {
+		return jid
+	}
+	if parsed.Server == types.DefaultUserServer {
+		return jid
+	}
+	if parsed.Server == types.HiddenUserServer && b.client.Store.LIDs != nil {
+		pn, err := b.client.Store.LIDs.GetPNForLID(context.Background(), parsed)
+		if err == nil && pn.Server == types.DefaultUserServer {
+			return pn.String()
+		}
+	}
+	return jid
 }
 
 func (b *SachetBot) markDirty() {
