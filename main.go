@@ -85,7 +85,7 @@ func waitForShutdown(client *whatsmeow.Client, log waLog.Logger) {
 
 func loadConfig() Config {
 	return Config{
-		CommandPrefix:      getEnv("SACHET_COMMAND_PREFIX", "?"),
+		CommandPrefix:      getEnv("SACHET_COMMAND_PREFIX", "."),
 		WAStorePath:        getEnv("SACHET_WA_DB", "wa-session.db"),
 		StatsPath:          getEnv("SACHET_STATS_FILE", "sachet-stats.json"),
 		HistoryBatchSize:   getEnvInt("SACHET_HISTORY_BATCH", 50),
